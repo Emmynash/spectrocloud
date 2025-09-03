@@ -92,7 +92,7 @@ To get our app running, we need to tell Kubernetes about two key things using a 
 
 Create a new file named `app.yaml` and add the following content. The comments in the file explain what each section does.
 
-```
+```yml
 # This section defines the Deployment object.
 apiVersion: apps/v1
 kind: Deployment

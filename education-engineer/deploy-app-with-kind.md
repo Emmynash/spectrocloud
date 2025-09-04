@@ -14,7 +14,7 @@ In this tutorial, you will:
 
 * Clean up all resources.
 
-## Prerequisites
+# Prerequisites
 Before you begin, ensure you have the following tools and resources available.
 
 * A computer with **macOS, Linux, or Windows.**
@@ -27,11 +27,11 @@ Before you begin, ensure you have the following tools and resources available.
 
 * **kubectl**: This is the command-line tool you will use to communicate with your Kubernetes cluster. It is often included with Docker Desktop, but if you need to install it separately, follow the [official Kubernetes instructions](https://kubernetes.io/docs/tasks/tools/install-kubectl/).
 
-## Create a Local Kubernetes Cluster
+# Create a Local Kubernetes Cluster
 
-Your first step is to create the cluster itself. This process will download a container image that acts as a Kubernetes node and start it on your machine using Docker.
+Your first step is to create the **cluster** (a group of connected machines for running applications). This process will download a container image that acts as a Kubernetes **node** (a single worker machine within the cluster), and start it on your machine using Docker.
 
-### Start the Cluster
+## Start the Cluster
 To create your cluster, issue the `kind create cluster` command in your terminal.
 
 
@@ -41,7 +41,7 @@ $ kind create cluster
 
 > **Note:** By default, this command creates a cluster named `kind`. If you run the command again, it will fail because a cluster with that name already exists. To create multiple clusters, you must give each a unique name using the `--name` flag, like `kind create cluster --name my-other-cluster`.
 
-You will see output as Kind prepares the node, sets up the Kubernetes control plane, and configures networking. The process may take a minute or two.
+The output will show the address of the **Kubernetes control plane** (the cluster's "brain" that manages all operations), confirming that your cluster is running and `kubectl` can connect to it successfully.
 
 ```
 $ Creating cluster "kind" ...
@@ -58,7 +58,7 @@ kubectl cluster-info --context kind-kind
 
 Have a nice day! 👋
 ```
-### Verify Cluster Connectivity
+## Verify Cluster Connectivity
 
 Once the setup is complete, you should verify that you can communicate with your new cluster. The `kubectl` command-line tool is your primary way of interacting with the Kubernetes Application Programming Interface (API).
 
@@ -68,7 +68,7 @@ Use the following command to get basic information about your cluster:
 # The --context flag tells kubectl which cluster to talk to.
 $ kubectl cluster-info --context kind-kind
 ```
-The output will show the address of the Kubernetes control plane, confirming that your cluster is running and `kubectl` can connect to it successfully.
+You will see the address of the Kubernetes control plane, confirming that your cluster is running and `kubectl` can connect to it successfully.
 
 ```
 $ Kubernetes control plane is running at https://127.0.0.1:55198
@@ -76,19 +76,21 @@ CoreDNS is running at https://127.0.0.1:55198/api/v1/namespaces/kube-system/serv
 
 To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
 ```
-## Deploy the Sample Application
+# Deploy the Sample Application
 
 With a running cluster, you can now deploy an application. In Kubernetes, you define the desired state of your application using YAML configuration files, often called "manifests."
 
-### Understand the Kubernetes Objects
+## Understand the Kubernetes Objects
 
 To get our app running, we need to tell Kubernetes about two key things using a YAML file. Think of it like a recipe.
 
 **Deployment**: This object tells Kubernetes what container image to run and how many copies (replicas) of it to keep running. If an application instance crashes, the Deployment's controller will automatically replace it to maintain the desired state.
 
-**Service**: A Deployment's Pods can be replaced, causing their internal IP addresses to change. A Service provides a stable, unchanging network endpoint (a single IP address and DNS name) to access the application Pods, regardless of their individual states.
+**Service**: Pods can be replaced at any time, and when they are, they get a new internal IP address. A Service provides a stable, internal IP address and DNS name that stays constant. For this guide, we are using the default Service type, `ClusterIP`, which is only reachable from within the cluster. This is all we need, because `kubectl port-forward` will create a secure tunnel from our local machine directly to this internal service address.
 
-### Create the Application Manifest
+> Other service types, like `NodePort` and `LoadBalancer`, are used to expose applications directly to external traffic, but that's a topic for a more advanced tutorial.
+
+## Create the Application Manifest
 
 Create a new file named `app.yaml` and add the following content. The comments in the file explain what each section does.
 
@@ -118,18 +120,16 @@ kind: Service
 metadata:
   name: web # The name of our Service.
 spec:
-  # The type NodePort is often used for development, but for Kind,
-  # we will use port-forwarding to access the application.
-  type: NodePort
+  # This selector tells the Service which Pods to send traffic to.
   selector:
-    app: web # This selector finds Pods with the label "app: web".
+    app: web # The selector finds Pods with the label "app: web".
   ports:
   - protocol: TCP
     port: 8080 # The port the Service will be available on inside the cluster.
     targetPort: 8080 # The port on the container that traffic should be sent to.
 ```
 
-### Apply the Manifest
+## Apply the Manifest
 
 Now, instruct Kubernetes to create the objects defined in your manifest file. Use the `kubectl apply` command and point it to your file.
 
@@ -154,11 +154,11 @@ $ NAME                 READY   STATUS    RESTARTS   AGE
 web-84d778c6cb-p4p6c   1/1     Running   0          25s
 ```
 
-## Access Your Application
+# Access Your Application
 
 The sample application is now running inside your Kind cluster, but the cluster has its own private network. To access it from your local machine's browser, you need to forward a local port into the cluster.
 
-### Use Port Forwarding
+## Use Port Forwarding
 
 The `kubectl port-forward` command creates a secure tunnel from your local machine directly to your application running inside the cluster. We will target the Service we created, as it provides a stable endpoint.
 
@@ -174,10 +174,10 @@ The command will continue running in your terminal, actively forwarding traffic.
 $ Forwarding from 127.0.0.1:8080 -> 8080
 Forwarding from [::1]:8080 -> 8080
 ```
-### View the App
+## View the App
 Now, open a web browser and navigate to `http://localhost:8080`.
 
-You will see the sample application's welcome page, which should look similar to this:
+If everything worked, your browser should display output similar to this:
 
 ```
 Hello, world!
@@ -186,20 +186,33 @@ Hostname: web-84d778c6cb-p4p6c
 ```
 To stop the port forwarding, return to your terminal and press `Ctrl+C`.
 
-## Cleanup
+# Cleanup
 
-A key benefit of Kind is how easy it is to create and destroy clusters. To avoid leaving unused resources running on your machine, you should always clean up when you are finished.
+When you're finished, it's important to remove all the resources to avoid leaving unused components on your machine. We'll first delete the Kubernetes application resources and then destroy the local cluster itself.
 
-To delete your entire local cluster, issue the `kind delete cluster` command.
+## Remove the Application
+
+Use the same manifest file you used to create the application to delete it. This tells Kubernetes to remove all resources defined in app.yaml.
+```
+$ kubectl delete -f app.yaml
+```
+You'll see a confirmation that the resources have been deleted.
+
+```
+$ deployment.apps "web" deleted
+service "web" deleted
+```
+## Delete the Cluster
+
+Finally, delete your entire local cluster using the kind command.
 
 ```
 $ kind delete cluster
 ```
-
 ```
 $ Deleting cluster "kind" ...
 ```
-## Next Steps
+# Next Steps
 
 Congratulations! You have successfully used Kind to create a local Kubernetes cluster, deployed a containerized application using a Deployment, and exposed it with a Service. You also learned how to access your application using `kubectl port-forward`.
 

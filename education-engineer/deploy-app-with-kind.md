@@ -208,7 +208,7 @@ Finally, delete your entire local cluster using the kind command.
 
 ```
 $ kind delete cluster
-```
+``` 
 ```
 $ Deleting cluster "kind" ...
 ```
